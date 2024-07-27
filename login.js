@@ -25,7 +25,7 @@ async function delayTime(ms) {
       await loginToSite(page, url, username, password);
 
       // 登录 panel.ct8.pl
-      url = 'https://panel.ct8.pl';
+      url = 'https://panel.ct8.pl/login/?next=/';
       await loginToSite(page, url, username, password);
 
     } catch (error) {
