@@ -15,9 +15,9 @@
 ### CT8格式如下
 ```
 [  
-  { "username": "qinshihuang", "password": "linux.do", "panelnum": "" },  
-  { "username": "zhaogao", "password": "daqinzhonggong", "panelnum": "" },  
-  { "username": "heiheihei", "password": "shaibopengke", "panelnum": "" }  
+  { "username": "qinshihuang", "password": "linux.do"},  
+  { "username": "zhaogao", "password": "daqinzhonggong"},  
+  { "username": "heiheihei", "password": "shaibopengke"}  
 ]
 ```
 
