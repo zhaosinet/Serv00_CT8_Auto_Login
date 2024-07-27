@@ -2,50 +2,75 @@ const fs = require('fs');
 const puppeteer = require('puppeteer');
 
 function formatToISO(date) {
-  return date.toISOString().replace('T', ' ').slice(0, -5);
+  return date.toISOString().replace('T', ' ').replace('Z', '').replace(/\.\d{3}Z/, '');
 }
 
 async function delayTime(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-const config = {
-  serv00: {
-    baseUrl: 'https://panel{}.serv00.com/login/?next=/'
-  },
-  ct8: {
-    loginUrl: 'https://panel.ct8.pl/login/?next=/'
-  }
-};
-
 (async () => {
-  const accountsJson = process.env.ACCOUNTS_JSON || fs.readFileSync('accounts.json', 'utf-8');
+  // 读取 accounts.json 中的 JSON 字符串
+  const accountsJson = fs.readFileSync('accounts.json', 'utf-8');
   const accounts = JSON.parse(accountsJson);
 
   for (const account of accounts) {
     const { username, password, panelnum } = account;
 
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
 
+    let url = `https://panel${panelnum}.serv00.com/login/?next=/`;
+
     try {
-      if (panelnum) {
-        // 登录 panel.serv00.com
-        const serv00Url = config.serv00.baseUrl.replace('{}', panelnum);
-        await loginToSite(page, serv00Url, username, password);
+      // 修改网址为新的登录页面
+      await page.goto(url);
+
+      // 清空用户名输入框的原有值
+      const usernameInput = await page.$('#id_username');
+      if (usernameInput) {
+        await usernameInput.click({ clickCount: 3 }); // 选中输入框的内容
+        await usernameInput.press('Backspace'); // 删除原来的值
       }
 
-      // 登录 panel.ct8.pl
-      const ct8Url = config.ct8.loginUrl;
-      await loginToSite(page, ct8Url, username, password);
+      // 输入实际的账号和密码
+      await page.type('#id_username', username);
+      await page.type('#id_password', password);
 
+      // 提交登录表单
+      const loginButton = await page.$('#submit');
+      if (loginButton) {
+        await loginButton.click();
+      } else {
+        throw new Error('无法找到登录按钮');
+      }
+
+      // 等待登录成功（如果有跳转页面的话）
+      await page.waitForNavigation();
+
+      // 判断是否登录成功
+      const isLoggedIn = await page.evaluate(() => {
+        const logoutButton = document.querySelector('a[href="/logout/"]');
+        return logoutButton !== null;
+      });
+
+      if (isLoggedIn) {
+        // 获取当前的UTC时间和北京时间
+        const nowUtc = formatToISO(new Date());// UTC时间
+        const nowBeijing = formatToISO(new Date(new Date().getTime() + 8 * 60 * 60 * 1000)); // 北京时间东8区，用算术来搞
+        console.log(`账号 ${username} 于北京时间 ${nowBeijing}（UTC时间 ${nowUtc}）登录成功！`);
+      } else {
+        console.error(`账号 ${username} 登录失败，请检查账号和密码是否正确。`);
+      }
     } catch (error) {
       console.error(`账号 ${username} 登录时出现错误: ${error}`);
     } finally {
+      // 关闭页面和浏览器
       await page.close();
       await browser.close();
 
-      const delay = Math.floor(Math.random() * 8000) + 1000;
+      // 用户之间添加随机延时
+      const delay = Math.floor(Math.random() * 8000) + 1000; // 随机延时1秒到8秒之间
       await delayTime(delay);
     }
   }
@@ -53,74 +78,7 @@ const config = {
   console.log('所有账号登录完成！');
 })();
 
-async function loginToSite(page, url, username, password) {
-  let retries = 3;
-  while (retries > 0) {
-    try {
-      await page.goto(url, { waitUntil: 'networkidle0' });
-
-      if (url.includes('serv00.com')) {
-        await loginToServ00(page, username, password);
-      } else if (url.includes('ct8.pl')) {
-        await loginToCt8(page, username, password);
-      }
-
-      await page.waitForNavigation({ waitUntil: 'networkidle0' }).catch(() => {});
-
-      const isLoggedIn = await checkLoginStatus(page, url);
-
-      if (isLoggedIn) {
-        const nowUtc = formatToISO(new Date());
-        const nowBeijing = formatToISO(new Date(new Date().getTime() + 8 * 60 * 60 * 1000));
-        console.log(`账号 ${username} 于北京时间 ${nowBeijing}（UTC时间 ${nowUtc}）登录 ${url} 成功！`);
-        return;
-      } else {
-        console.error(`账号 ${username} 登录 ${url} 失败，正在重试...`);
-      }
-    } catch (error) {
-      console.error(`账号 ${username} 登录 ${url} 时出现错误: ${error}`);
-    }
-    retries--;
-    await delayTime(5000); // 等待5秒后重试
-  }
-  console.error(`账号 ${username} 登录 ${url} 失败，已尝试3次。`);
-}
-
-async function loginToServ00(page, username, password) {
-  await page.type('input[name="username"]', username);
-  await page.type('input[name="password"]', password);
-
-  const loginButton = await page.$('input[type="submit"]');
-  if (loginButton) {
-    await loginButton.click();
-  } else {
-    throw new Error('无法找到登录按钮');
-  }
-}
-
-async function loginToCt8(page, username, password) {
-  await page.type('#id_username', username);
-  await page.type('#id_password', password);
-
-  const loginButton = await page.$('input[type="submit"]');
-  if (loginButton) {
-    await loginButton.click();
-  } else {
-    throw new Error('无法找到登录按钮');
-  }
-}
-
-async function checkLoginStatus(page, url) {
-  if (url.includes('serv00.com')) {
-    return await page.evaluate(() => {
-      return document.querySelector('a[href*="logout"]') !== null || 
-             document.querySelector('.user-menu') !== null;
-    });
-  } else if (url.includes('ct8.pl')) {
-    return await page.evaluate(() => {
-      return document.querySelector('.user-box-menu') !== null || 
-             document.querySelector('.dashboard') !== null;
-    });
-  }
-  return false;
+// 自定义延时函数
+function delayTime(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
