@@ -9,6 +9,15 @@ async function delayTime(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+const config = {
+  serv00: {
+    baseUrl: 'https://panel{}.serv00.com/login/?next=/'
+  },
+  ct8: {
+    loginUrl: 'https://panel.ct8.pl/login/?next=/'
+  }
+};
+
 (async () => {
   const accountsJson = process.env.ACCOUNTS_JSON || fs.readFileSync('accounts.json', 'utf-8');
   const accounts = JSON.parse(accountsJson);
@@ -22,12 +31,12 @@ async function delayTime(ms) {
     try {
       if (panelnum) {
         // 登录 panel.serv00.com
-        const url = `https://panel${panelnum}.serv00.com/login/?next=/`;
-        await loginToSite(page, url, username, password);
+        const serv00Url = config.serv00.baseUrl.replace('{}', panelnum);
+        await loginToSite(page, serv00Url, username, password);
       }
 
       // 登录 panel.ct8.pl
-      const ct8Url = 'https://panel.ct8.pl/';
+      const ct8Url = config.ct8.loginUrl;
       await loginToSite(page, ct8Url, username, password);
 
     } catch (error) {
@@ -90,10 +99,10 @@ async function loginToServ00(page, username, password) {
 }
 
 async function loginToCt8(page, username, password) {
-  await page.type('input[name="email"]', username);
-  await page.type('input[name="password"]', password);
+  await page.type('#id_username', username);
+  await page.type('#id_password', password);
 
-  const loginButton = await page.$('button[type="submit"]');
+  const loginButton = await page.$('input[type="submit"]');
   if (loginButton) {
     await loginButton.click();
   } else {
