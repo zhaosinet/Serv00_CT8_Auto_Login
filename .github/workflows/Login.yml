@@ -8,6 +8,7 @@ on:
 
 env:
   ACCOUNTS_JSON: ${{ secrets.ACCOUNTS_JSON }}
+  TELEGRAM_JSON: ${{ secrets.TELEGRAM_JSON }}
 
 jobs:  
   login:  
@@ -23,7 +24,7 @@ jobs:
           node-version: '20.x'  
   
       - name: Install dependencies  
-        run: npm install puppeteer  
+        run: npm install puppeteer axios
   
       - name: Create accounts.json  
         run: echo "$ACCOUNTS_JSON" > accounts.json  
@@ -32,4 +33,3 @@ jobs:
         run: |  
           set -e  
           xvfb-run --server-args="-screen 0 1280x1024x24" node login.js
-
