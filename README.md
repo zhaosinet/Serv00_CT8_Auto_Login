@@ -19,6 +19,14 @@
   { "username": "ct8user2", "password": "ct8password2", "type": "ct8" } 
 ]
 ```
+## 接入telegram
+创建`TELEGRAM_JSON`，方法同上,在telegram搜索`botfather`,输入`/newbot`创建一个机器人并获取`telegramBotToken`,`@userinfobot`获取输入`/start`获取`telegramBotUserId`
+```
+{
+  "telegramBotToken": "YOUR_BOT_TOKEN",
+  "telegramBotUserId": "YOUR_USER_ID"
+}
+```
 
 ## 参考信息
 |  名称 |来源|地址|
