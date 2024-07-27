@@ -1,5 +1,6 @@
 const fs = require('fs');
 const puppeteer = require('puppeteer');
+const axios = require('axios');
 
 function formatToISO(date) {
   return date.toISOString().replace('T', ' ').replace('Z', '').replace(/\.\d{3}Z/, '');
@@ -7,6 +8,38 @@ function formatToISO(date) {
 
 async function delayTime(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+let telegramConfig;
+
+function loadTelegramConfig() {
+  const telegramJson = process.env.TELEGRAM_JSON;
+  if (telegramJson) {
+    try {
+      telegramConfig = JSON.parse(telegramJson);
+    } catch (error) {
+      console.error('Error parsing TELEGRAM_JSON:', error);
+    }
+  }
+}
+
+async function sendTelegramMessage(message) {
+  if (!telegramConfig) {
+    console.error('Telegram configuration not loaded');
+    return;
+  }
+
+  const { telegramBotToken, telegramBotUserId } = telegramConfig;
+  const url = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+  
+  try {
+    await axios.post(url, {
+      chat_id: telegramBotUserId,
+      text: message
+    });
+  } catch (error) {
+    console.error('Error sending Telegram message:', error);
+  }
 }
 
 async function loginAccount(account, browser) {
@@ -51,18 +84,25 @@ async function loginAccount(account, browser) {
     if (isLoggedIn) {
       const nowUtc = formatToISO(new Date());
       const nowBeijing = formatToISO(new Date(new Date().getTime() + 8 * 60 * 60 * 1000));
-      console.log(`账号 ${username} (${type}) 于北京时间 ${nowBeijing}（UTC时间 ${nowUtc}）登录成功！`);
+      const message = `账号 ${username} (${type}) 于北京时间 ${nowBeijing}（UTC时间 ${nowUtc}）登录成功！`;
+      console.log(message);
+      await sendTelegramMessage(message);
     } else {
-      console.error(`账号 ${username} (${type}) 登录失败，请检查账号和密码是否正确。`);
+      const message = `账号 ${username} (${type}) 登录失败，请检查账号和密码是否正确。`;
+      console.error(message);
+      await sendTelegramMessage(message);
     }
   } catch (error) {
-    console.error(`账号 ${username} (${type}) 登录时出现错误: ${error}`);
+    const errorMessage = `账号 ${username} (${type}) 登录时出现错误: ${error}`;
+    console.error(errorMessage);
+    await sendTelegramMessage(errorMessage);
   } finally {
     await page.close();
   }
 }
 
 (async () => {
+  loadTelegramConfig();
   const accountsJson = fs.readFileSync('accounts.json', 'utf-8');
   const accounts = JSON.parse(accountsJson);
 
@@ -78,4 +118,5 @@ async function loginAccount(account, browser) {
 
   await browser.close();
   console.log('所有账号登录完成！');
+  await sendTelegramMessage('所有账号登录完成！');
 })();
