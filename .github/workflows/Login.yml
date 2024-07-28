@@ -9,6 +9,8 @@ on:
 env:
   ACCOUNTS_JSON: ${{ secrets.ACCOUNTS_JSON }}
   TELEGRAM_JSON: ${{ secrets.TELEGRAM_JSON }}
+  DINGDING_WEBHOOK_URL: ${{ secrets.DINGDING_WEBHOOK_URL }}
+  DINGDING_SECRET: ${{ secrets.DINGDING_SECRET }}
 
 jobs:  
   login:  
