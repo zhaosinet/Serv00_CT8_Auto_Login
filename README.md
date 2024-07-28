@@ -33,7 +33,7 @@
 
 在自己的钉钉群聊中，进入`群设置`点击`机器人`，然后`添加机器人`，选择`自定义`，输入机器人名字，在安全设置中勾选`加签`，把加签密码复制下来，点击完成后得到的`Webhook`复制下来
 
-创建`DINGDING_WEBHOOK_URL`和`DINGDING_SECRET`，方法同前，`DINGDING_WEBHOOK_URL`填入`Webhook`，`DINGDING_SECRET`填入`加签`
+创建`DINGDING_WEBHOOK_URL`和`DINGDING_SECRET`，方法同前，`DINGDING_WEBHOOK_URL`直接填入获取的`Webhook`，`DINGDING_SECRET`直接填入获取的 `加签`
 `
 
 ## 参考信息
