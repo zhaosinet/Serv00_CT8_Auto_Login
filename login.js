@@ -1,6 +1,7 @@
 const fs = require('fs');
 const puppeteer = require('puppeteer');
 const axios = require('axios');
+const crypto = require('crypto');
 
 function formatToISO(date) {
   return date.toISOString().replace('T', ' ').replace('Z', '').replace(/\.\d{3}Z/, '');
@@ -42,6 +43,42 @@ async function sendTelegramMessage(message) {
   }
 }
 
+function generateSignature(secret, timestamp) {
+  const stringToSign = `${timestamp}\n${secret}`;
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(stringToSign);
+  return hmac.digest('base64');
+}
+
+async function sendDingTalkMessage(message) {
+  const webhookUrl = process.env.DINGDING_WEBHOOK_URL;
+  const secret = process.env.DINGDING_SECRET;
+  if (!webhookUrl || !secret) {
+    console.error('DingTalk webhook URL or secret not set');
+    return;
+  }
+
+  const timestamp = Date.now();
+  const sign = generateSignature(secret, timestamp);
+  const finalUrl = `${webhookUrl}&timestamp=${timestamp}&sign=${encodeURIComponent(sign)}`;
+
+  try {
+    await axios.post(finalUrl, {
+      msgtype: 'text',
+      text: {
+        content: message
+      }
+    });
+  } catch (error) {
+    console.error('Error sending DingTalk message:', error);
+  }
+}
+
+async function sendMessage(message) {
+  await sendTelegramMessage(message);
+  await sendDingTalkMessage(message);
+}
+
 async function loginAccount(account, browser) {
   const { username, password, panelnum, type } = account;
   const page = await browser.newPage();
@@ -81,18 +118,18 @@ async function loginAccount(account, browser) {
       const nowBeijing = formatToISO(new Date(new Date().getTime() + 8 * 60 * 60 * 1000));
       const message = `账号 ${username} (${type}) 于北京时间 ${nowBeijing}（UTC时间 ${nowUtc}）登录成功！`;
       console.log(message);
-      await sendTelegramMessage(message);
+      await sendMessage(message);
       return true;
     } else {
       const message = `账号 ${username} (${type}) 登录失败，请检查账号和密码是否正确。`;
       console.error(message);
-      await sendTelegramMessage(message);
+      await sendMessage(message);
       return false;
     }
   } catch (error) {
     const errorMessage = `账号 ${username} (${type}) 登录时出现错误: ${error}`;
     console.error(errorMessage);
-    await sendTelegramMessage(errorMessage);
+    await sendMessage(errorMessage);
     return false;
   } finally {
     await page.close();
@@ -132,5 +169,5 @@ async function loginAccount(account, browser) {
   }
 
   console.log(summaryMessage);
-  await sendTelegramMessage(summaryMessage);
+  await sendMessage(summaryMessage);
 })();
