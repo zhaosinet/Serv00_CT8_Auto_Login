@@ -168,6 +168,7 @@ async function loginAccount(account, browser) {
     });
   }
 
+  
   console.log(summaryMessage);
   await sendMessage(summaryMessage);
 })();
